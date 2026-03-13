@@ -1,0 +1,42 @@
+:root {
+  --sidebar-width: 272px;
+  --sidebar-collapsed-width: 92px;
+  --shell-gap: 16px;
+}
+
+.app-shell {
+  min-height: 100vh;
+  color: #edf2ff;
+}
+
+.app-shell__main {
+  margin-left: calc(var(--sidebar-width) + 16px);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 18px 24px 0;
+  gap: var(--shell-gap);
+}
+
+.app-shell__content {
+  width: 100%;
+  min-width: 0;
+  display: block;
+}
+
+.app-shell--collapsed .app-shell__main {
+  margin-left: calc(var(--sidebar-collapsed-width) + 16px);
+}
+
+@media (max-width: 768px) {
+  .app-shell__main,
+  .app-shell--collapsed .app-shell__main {
+    margin-left: 0;
+    padding: 10px;
+    min-height: 100vh;
+    gap: 10px;
+  }
+}
+.app-shell__main {
+  margin-left: 272px;
+}
