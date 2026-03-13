@@ -1,31 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { logout } from "../api/auth";
+import { getMe, logout } from "../api/auth";
+import {
+  getClosedTicketsCount,
+  getOpenTicketsCount,
+  listTickets,
+} from "../api/tickets";
 import AppShell from "../components/layout/AppShell";
 import "./Dashboard.css";
-
-const baseStats = [
-  {
-    title: "Open Tickets",
-    value: 18,
-    meta: "+3 today",
-  },
-  {
-    title: "Active Chats",
-    value: 7,
-    meta: "2 waiting",
-  },
-  {
-    title: "Systems Online",
-    value: 24,
-    meta: "All stable",
-  },
-  {
-    title: "Pending Tasks",
-    value: 12,
-    meta: "5 high priority",
-  },
-];
 
 const quickActions = [
   {
@@ -57,68 +39,6 @@ const quickActions = [
     title: "Create incident",
     meta: "Log a critical event",
     icon: "⚡",
-  },
-];
-
-const initialTickets = [
-  {
-    id: "#2451",
-    title: "Network issue in office segment A",
-    status: "In Progress",
-    priority: "High",
-    time: "5 min ago",
-  },
-  {
-    id: "#2450",
-    title: "Printer not reachable from finance PC",
-    status: "Open",
-    priority: "Medium",
-    time: "12 min ago",
-  },
-  {
-    id: "#2449",
-    title: "User account permission update",
-    status: "Resolved",
-    priority: "Low",
-    time: "28 min ago",
-  },
-  {
-    id: "#2448",
-    title: "Backup verification on archive node",
-    status: "In Review",
-    priority: "Medium",
-    time: "42 min ago",
-  },
-];
-
-const initialActivity = [
-  {
-    id: 1,
-    type: "ticket",
-    title: "Emir created ticket #2451",
-    text: "Network issue reported in office segment A.",
-    time: "2 min ago",
-  },
-  {
-    id: 2,
-    type: "resolved",
-    title: "API authentication issue resolved",
-    text: "Session refresh flow is now responding normally.",
-    time: "9 min ago",
-  },
-  {
-    id: 3,
-    type: "chat",
-    title: "New support chat started",
-    text: "Finance operator opened a priority conversation.",
-    time: "14 min ago",
-  },
-  {
-    id: 4,
-    type: "review",
-    title: "Ticket #2448 moved to In Review",
-    text: "Backup verification completed.",
-    time: "26 min ago",
   },
 ];
 
@@ -203,46 +123,116 @@ function getActivityClass(type) {
   }
 }
 
+function formatRole(roles) {
+  if (!Array.isArray(roles) || !roles.length) return "User";
+  return roles[0].replace("ROLE_", "").replaceAll("_", " ");
+}
+
+function safeCount(value) {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") return Number(value) || 0;
+  if (typeof value?.count === "number") return value.count;
+  if (typeof value?.total === "number") return value.total;
+  if (typeof value?.totalItems === "number") return value.totalItems;
+  return 0;
+}
+
+function mapTicketToActivity(ticket) {
+  const creatorName = ticket.creator
+    ? `${ticket.creator.firstName || ""} ${ticket.creator.lastName || ""}`.trim()
+    : "User";
+
+  const type = ticket.status === "CLOSED" ? "closed" : "ticket";
+
+  return {
+    id: `activity-${ticket.id}`,
+    type,
+    title: `${creatorName} created ticket #${ticket.id}`,
+    text: ticket.title,
+    time: new Date(ticket.createdAt).toLocaleString(),
+  };
+}
+
+function mapTicketToQueue(ticket) {
+  return {
+    id: `#${ticket.id}`,
+    title: ticket.title,
+    status: ticket.status,
+    priority: ticket.priority,
+    time: new Date(ticket.createdAt).toLocaleString(),
+  };
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [tickets, setTickets] = useState(initialTickets);
-  const [activityFeed, setActivityFeed] = useState(initialActivity);
+  const [user, setUser] = useState(null);
+  const [tickets, setTickets] = useState([]);
+  const [activityFeed, setActivityFeed] = useState([]);
+  const [openCount, setOpenCount] = useState(0);
+  const [closedCount, setClosedCount] = useState(0);
+  const [loading, setLoading] = useState(true);
 
-  const stats = useMemo(() => baseStats, []);
+  const stats = useMemo(
+    () => [
+      {
+        title: "Open Tickets",
+        value: openCount,
+        meta: "Current active issues",
+      },
+      {
+        title: "Closed Tickets",
+        value: closedCount,
+        meta: "Resolved by team",
+      },
+      {
+        title: "Total Tickets",
+        value: tickets.length,
+        meta: "Loaded from API",
+      },
+      {
+        title: "Your Role",
+        value: Array.isArray(user?.roles) ? user.roles.length : 0,
+        meta: formatRole(user?.roles),
+      },
+    ],
+    [openCount, closedCount, tickets.length, user],
+  );
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setTickets((prev) => {
-        const next = [...prev];
-        const first = next.shift();
+    let mounted = true;
 
-        if (first) {
-          next.push({
-            ...first,
-            time: "Just now",
-          });
+    async function loadDashboard() {
+      try {
+        const [userData, openData, closedData, ticketsData] = await Promise.all(
+          [
+            getMe(),
+            getOpenTicketsCount(),
+            getClosedTicketsCount(),
+            listTickets(),
+          ],
+        );
+
+        if (!mounted) return;
+
+        setUser(userData);
+        setOpenCount(safeCount(openData));
+        setClosedCount(safeCount(closedData));
+        setTickets(ticketsData.slice(0, 6).map(mapTicketToQueue));
+        setActivityFeed(ticketsData.slice(0, 6).map(mapTicketToActivity));
+      } catch (error) {
+        console.error("Dashboard load failed:", error);
+      } finally {
+        if (mounted) {
+          setLoading(false);
         }
+      }
+    }
 
-        return next;
-      });
+    loadDashboard();
 
-      setActivityFeed((prev) => {
-        const next = [...prev];
-        const first = next.pop();
-
-        if (first) {
-          next.unshift({
-            ...first,
-            id: Date.now(),
-            time: "Just now",
-          });
-        }
-
-        return next;
-      });
-    }, 5000);
-
-    return () => clearInterval(interval);
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   async function handleLogout() {
@@ -256,7 +246,7 @@ export default function Dashboard() {
   }
 
   return (
-    <AppShell onLogout={handleLogout}>
+    <AppShell onLogout={handleLogout} user={user}>
       <div className="dashboard-page">
         <section className="dashboard-gradient-border">
           <div className="dashboard-activity-hero">
@@ -266,24 +256,40 @@ export default function Dashboard() {
                 <h2 className="dashboard-activity-hero__title">
                   Live workspace updates
                 </h2>
+                {user ? (
+                  <p style={{ marginTop: 8, color: "#9fb0d7" }}>
+                    {user.firstName} {user.lastName} · {formatRole(user.roles)}
+                  </p>
+                ) : null}
               </div>
             </div>
 
             <div className="dashboard-activity-list">
-              {activityFeed.map((item) => (
-                <article key={item.id} className="dashboard-activity-item">
-                  <div
-                    className={`dashboard-activity-dot ${getActivityClass(item.type)}`}
-                  />
+              {activityFeed.length ? (
+                activityFeed.map((item) => (
+                  <article key={item.id} className="dashboard-activity-item">
+                    <div
+                      className={`dashboard-activity-dot ${getActivityClass(item.type)}`}
+                    />
+                    <div className="dashboard-activity-item__content">
+                      <strong>{item.title}</strong>
+                      <p>{item.text}</p>
+                    </div>
+                    <span className="dashboard-activity-item__time">
+                      {item.time}
+                    </span>
+                  </article>
+                ))
+              ) : (
+                <article className="dashboard-activity-item">
                   <div className="dashboard-activity-item__content">
-                    <strong>{item.title}</strong>
-                    <p>{item.text}</p>
+                    <strong>
+                      {loading ? "Loading..." : "No recent activity"}
+                    </strong>
+                    <p>Activity feed will appear here.</p>
                   </div>
-                  <span className="dashboard-activity-item__time">
-                    {item.time}
-                  </span>
                 </article>
-              ))}
+              )}
             </div>
           </div>
         </section>
@@ -341,6 +347,7 @@ export default function Dashboard() {
                 </div>
               </div>
             </article>
+
             <div className="dashboard-card__header">
               <div>
                 <span className="dashboard-card__eyebrow">Quick actions</span>
@@ -350,7 +357,16 @@ export default function Dashboard() {
 
             <div className="dashboard-actions">
               {quickActions.map((action) => (
-                <button key={action.title} className="dashboard-action-tile">
+                <button
+                  key={action.title}
+                  className="dashboard-action-tile"
+                  type="button"
+                  onClick={() => {
+                    if (action.title === "Create new ticket") {
+                      navigate("/tickets");
+                    }
+                  }}
+                >
                   <span className="dashboard-action-tile__icon">
                     {action.icon}
                   </span>
@@ -375,19 +391,19 @@ export default function Dashboard() {
               <div className="dashboard-summary">
                 <div className="dashboard-summary__row">
                   <span>Resolved tickets</span>
-                  <strong>9</strong>
+                  <strong>{closedCount}</strong>
                 </div>
                 <div className="dashboard-summary__row">
-                  <span>New requests</span>
-                  <strong>4</strong>
+                  <span>Open requests</span>
+                  <strong>{openCount}</strong>
                 </div>
                 <div className="dashboard-summary__row">
-                  <span>Team response rate</span>
-                  <strong>96%</strong>
+                  <span>Total queue</span>
+                  <strong>{tickets.length}</strong>
                 </div>
                 <div className="dashboard-summary__row">
-                  <span>Average wait time</span>
-                  <strong>12 min</strong>
+                  <span>Logged user</span>
+                  <strong>{user ? user.firstName : "..."}</strong>
                 </div>
               </div>
             </article>
@@ -437,29 +453,42 @@ export default function Dashboard() {
           </div>
 
           <div className="dashboard-ticket-list">
-            {tickets.map((ticket) => (
-              <article key={ticket.id} className="dashboard-ticket-item">
-                <div className="dashboard-ticket-item__main">
-                  <div className="dashboard-ticket-item__top">
-                    <strong>{ticket.id}</strong>
-                    <span
-                      className={`dashboard-badge dashboard-badge--${ticket.priority.toLowerCase()}`}
-                    >
-                      {ticket.priority}
-                    </span>
+            {tickets.length ? (
+              tickets.map((ticket) => (
+                <article key={ticket.id} className="dashboard-ticket-item">
+                  <div className="dashboard-ticket-item__main">
+                    <div className="dashboard-ticket-item__top">
+                      <strong>{ticket.id}</strong>
+                      <span
+                        className={`dashboard-badge dashboard-badge--${String(
+                          ticket.priority || "medium",
+                        ).toLowerCase()}`}
+                      >
+                        {ticket.priority}
+                      </span>
+                    </div>
+
+                    <p>{ticket.title}</p>
                   </div>
 
-                  <p>{ticket.title}</p>
-                </div>
-
-                <div className="dashboard-ticket-item__side">
-                  <span className="dashboard-ticket-status">
-                    {ticket.status}
-                  </span>
-                  <span className="dashboard-ticket-time">{ticket.time}</span>
+                  <div className="dashboard-ticket-item__side">
+                    <span className="dashboard-ticket-status">
+                      {ticket.status}
+                    </span>
+                    <span className="dashboard-ticket-time">{ticket.time}</span>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <article className="dashboard-ticket-item">
+                <div className="dashboard-ticket-item__main">
+                  <div className="dashboard-ticket-item__top">
+                    <strong>{loading ? "Loading..." : "No tickets yet"}</strong>
+                  </div>
+                  <p>The queue will appear here.</p>
                 </div>
               </article>
-            ))}
+            )}
           </div>
         </section>
       </div>

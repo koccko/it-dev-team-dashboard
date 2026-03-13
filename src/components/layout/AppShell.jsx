@@ -3,12 +3,13 @@ import Sidebar from "../navigation/Sidebar";
 import Topbar from "../navigation/Topbar";
 import "./AppShell.css";
 
-export default function AppShell({ children, onLogout }) {
+export default function AppShell({ children, onLogout, user }) {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
     <div className={`app-shell ${collapsed ? "app-shell--collapsed" : ""}`}>
       <Sidebar
+        user={user}
         onLogout={onLogout}
         collapsed={collapsed}
         onToggleCollapse={() => setCollapsed((prev) => !prev)}
@@ -19,6 +20,7 @@ export default function AppShell({ children, onLogout }) {
           onLogout={onLogout}
           collapsed={collapsed}
           onToggleCollapse={() => setCollapsed((prev) => !prev)}
+          user={user}
         />
 
         <main className="app-shell__content">{children}</main>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { NavLink } from "react-router-dom";
 import "./Sidebar.css";
 
@@ -85,9 +85,36 @@ function LeaveIcon() {
   );
 }
 
-export default function Sidebar({ onLogout, collapsed, onToggleCollapse }) {
+function getDisplayRole(user) {
+  const role =
+    Array.isArray(user?.roles) && user.roles.length
+      ? user.roles[0]
+      : "ROLE_USER";
+
+  return role.replace("ROLE_", "").replaceAll("_", " ");
+}
+
+export default function Sidebar({
+  onLogout,
+  collapsed,
+  onToggleCollapse,
+  user,
+}) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [leaveOpen, setLeaveOpen] = useState(true);
+  const [leaveOpen, setLeaveOpen] = useState(false);
+
+  const initials = useMemo(() => {
+    const first = user?.firstName?.[0] || "U";
+    const last = user?.lastName?.[0] || "";
+    return `${first}${last}`.toUpperCase();
+  }, [user]);
+
+  const displayName = useMemo(() => {
+    if (user?.firstName || user?.lastName) {
+      return `${user?.firstName || ""} ${user?.lastName || ""}`.trim();
+    }
+    return "Emir";
+  }, [user]);
 
   function handleUserCardClick() {
     setUserMenuOpen((prev) => !prev);
@@ -116,6 +143,7 @@ export default function Sidebar({ onLogout, collapsed, onToggleCollapse }) {
   return (
     <aside className={`sidebar ${collapsed ? "sidebar--collapsed" : ""}`}>
       <div className="sidebar__neon-divider" aria-hidden="true" />
+
       <div className="sidebar__inner">
         <div className="sidebar__header">
           <div className="sidebar__brand">
@@ -255,13 +283,13 @@ export default function Sidebar({ onLogout, collapsed, onToggleCollapse }) {
                 }}
               >
                 <div className="sidebar__user-avatar">
-                  E
+                  {initials}
                   <span className="sidebar__user-status" />
                 </div>
 
                 <div className="sidebar__user-info">
-                  <strong>Emir</strong>
-                  <span>Support Engineer</span>
+                  <strong>{displayName}</strong>
+                  <span>{getDisplayRole(user)}</span>
                 </div>
               </div>
 

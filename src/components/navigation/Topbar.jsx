@@ -294,40 +294,44 @@ export default function Topbar({ onLogout }) {
       </div>
 
       <div className="topbar__right">
-        <div className="topbar-strip">
-          <div className="topbar-strip__item">
-            <span className="topbar-strip__icon">
+        <div className="topbar__commandbar">
+          <div className="topbar__capsule topbar__capsule--weather">
+            <span className="topbar__capsule-icon">
               <WeatherIcon type={weatherType} />
             </span>
-            <span className="topbar-strip__value">
-              Plovdiv {weather !== null ? `${weather}°C` : "--°C"}
-            </span>
+            <div className="topbar__capsule-text">
+              <span className="topbar__capsule-label">Weather</span>
+              <span className="topbar__capsule-value">
+                Plovdiv {weather !== null ? `${weather}°C` : "--°C"}
+              </span>
+            </div>
           </div>
 
-          <span className="topbar-strip__divider" />
-
-          <div className="topbar-strip__item">
-            <span className="topbar-strip__muted">{date}</span>
-            <span className="topbar-strip__clock">{clock}</span>
+          <div className="topbar__capsule topbar__capsule--time">
+            <div className="topbar__capsule-text">
+              <span className="topbar__capsule-label">{date}</span>
+              <span className="topbar__capsule-value topbar__capsule-value--clock">
+                {clock}
+              </span>
+            </div>
           </div>
 
-          <span className="topbar-strip__divider" />
-
-          <div className="topbar-strip__item topbar-strip__item--status">
+          <div className="topbar__status-pill">
             <span className="topbar-live-dot" />
-            <span className="topbar-strip__status-text">
-              All systems operational
-            </span>
+            <div className="topbar__capsule-text">
+              <span className="topbar__capsule-label">System health</span>
+              <span className="topbar__status-text">
+                All systems operational
+              </span>
+            </div>
           </div>
-
-          <span className="topbar-strip__divider" />
 
           <div
             className="topbar-notifications"
             onClick={(e) => e.stopPropagation()}
           >
             <button
-              className="topbar__notifications-btn"
+              className="topbar__action-btn"
               type="button"
               aria-label="Notifications"
               title="Notifications"
@@ -368,10 +372,8 @@ export default function Topbar({ onLogout }) {
             )}
           </div>
 
-          <span className="topbar-strip__divider" />
-
           <button
-            className="topbar__logout"
+            className="topbar__action-btn topbar__action-btn--logout"
             onClick={onLogout}
             type="button"
             aria-label="Logout"

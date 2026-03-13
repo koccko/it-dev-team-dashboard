@@ -100,7 +100,7 @@ export default function LoginPage() {
     setError("");
 
     if (!username.trim() || !password.trim()) {
-      setError("Please enter username and password.");
+      setError("Please enter email and password.");
       return;
     }
 
@@ -108,10 +108,11 @@ export default function LoginPage() {
 
     try {
       await login({
-        username,
+        username: username.trim(),
         password,
       });
 
+      await getMe();
       navigate("/dashboard", { replace: true });
     } catch (err) {
       setError(err.message || "Login failed. Please check your credentials.");
@@ -186,11 +187,11 @@ export default function LoginPage() {
           <h2 className="login-title">Sign in to your account</h2>
 
           <form className="login-form" onSubmit={handleLogin}>
-            <label htmlFor="username">Username</label>
+            <label htmlFor="username">Email</label>
             <input
               id="username"
               type="text"
-              placeholder="Enter your username"
+              placeholder="Enter your email"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               disabled={loading}

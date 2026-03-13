@@ -45,17 +45,6 @@
 }
 
 .sidebar__neon-divider::before {
-  display: none;
-}
-  box-shadow:
-    0 0 12px rgba(139, 92, 246, 0.95),
-    0 0 28px rgba(139, 92, 246, 0.52),
-    0 0 52px rgba(91, 33, 182, 0.32),
-    inset 0 0 8px rgba(255, 255, 255, 0.22);
-  opacity: 0.95;
-}
-
-.sidebar__neon-divider::before {
   content: "";
   position: absolute;
   top: -10px;
